@@ -1,0 +1,154 @@
+<!doctype html>
+<html lang="en-GB">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Presort Throughput Tracker</title>
+<meta name="description" content="Hour-by-hour presort shipments for two platforms and their total, against per-hour targets.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@75..100,500..800&family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<div class="wrap" id="app">
+  <header class="top">
+    <div>
+      <div class="eyebrow">Presortation · P1 + P2 · 03:00 → 02:00</div>
+      <h1 id="dayTitle">Hourly throughput</h1>
+    </div>
+    <div class="controls">
+      <button class="btn" id="prev" type="button" aria-label="Previous day">←</button>
+      <input class="date" id="date" type="date" aria-label="Sort day">
+      <button class="btn" id="next" type="button" aria-label="Next day">→</button>
+      <button class="btn" id="today" type="button">Today</button>
+      <button class="btn" id="jumpRecord" type="button">Day-by-day record ↓</button>
+      <div class="seg" role="group" aria-label="Status colours">
+        <button type="button" id="modeColour" aria-pressed="true">Colour</button>
+        <button type="button" id="modeMono" aria-pressed="false">Mono</button>
+      </div>
+    </div>
+  </header>
+
+  <div class="banner" id="sharedBanner" hidden>
+    <span id="sharedText">You're looking at shared figures.</span>
+    <span class="banner-actions">
+      <button class="btn" id="keepShared" type="button">Save to my tracker</button>
+      <button class="btn" id="closeShared" type="button">Close</button>
+    </span>
+  </div>
+
+  <div class="status-line">
+    <span id="conn"><span class="dot"></span>Saved in this browser</span>
+    <span id="updated"></span>
+  </div>
+
+  <section class="tiles" aria-label="Day totals against target">
+    <div class="tile total" id="tile-total"></div>
+    <div class="tile" id="tile-p1"></div>
+    <div class="tile" id="tile-p2"></div>
+  </section>
+
+  <section class="panel" aria-labelledby="chartTitle">
+    <div class="panel-head">
+      <h2 id="chartTitle">Shipments per hour</h2>
+      <div class="legend">
+        <span><i class="sw" style="background:var(--bar1)"></i>P1</span>
+        <span><i class="sw" style="background:var(--bar2)"></i>P2</span>
+        <span><i class="sw l"></i><span id="lgTotal">Total target</span></span>
+        <span><i class="sw l2"></i><span id="lgP1">P1 target</span></span>
+      </div>
+    </div>
+    <div class="chart" id="chart"></div>
+  </section>
+
+  <section class="panel" aria-labelledby="ledgerTitle">
+    <div class="panel-head">
+      <h2 id="ledgerTitle">Hour by hour</h2>
+      <div class="legend">
+        <span><span class="pill ok">▲ on / above</span></span>
+        <span><span class="pill near">● within 10%</span></span>
+        <span><span class="pill bad">▼ below</span></span>
+        <button class="btn" id="editTargets" type="button">Edit targets</button>
+      </div>
+    </div>
+    <form class="tgt" id="tgtForm" hidden>
+      <label for="tgtP1">P1 per hour<input id="tgtP1" type="number" min="1" step="1" inputmode="numeric"></label>
+      <label for="tgtP2">P2 per hour<input id="tgtP2" type="number" min="1" step="1" inputmode="numeric"></label>
+      <label for="tgtTotal">Total per hour<input id="tgtTotal" type="number" min="1" step="1" inputmode="numeric"></label>
+      <button class="btn" type="submit">Save targets</button>
+      <button class="btn" type="button" id="tgtReset">Reset to 9,500 / 4,500 / 14,000</button>
+      <button class="btn" type="button" id="tgtCancel">Cancel</button>
+      <p class="tgt-note">New targets apply to the day you're on and every new day. Earlier days keep the targets they were recorded with.</p>
+    </form>
+    <div class="ledger-wrap">
+      <table class="ledger">
+        <thead><tr>
+          <th>Hour</th>
+          <th>P1<small id="thP1"></small></th>
+          <th>P2<small id="thP2"></small></th>
+          <th>Total<small id="thT"></small></th>
+        </tr></thead>
+        <tbody id="rows"></tbody>
+      </table>
+    </div>
+  </section>
+
+  <section class="panel record" id="record" aria-labelledby="recordTitle">
+    <div class="panel-head">
+      <div>
+        <h2 id="recordTitle">Day-by-day record</h2>
+        <p class="rec-sub">Every day you enter figures is kept here automatically. Each day is judged against the targets it was recorded with. Select a date to open that day.</p>
+      </div>
+      <div class="seg" role="group" aria-label="Days to show">
+        <button type="button" data-range="7" aria-pressed="false">7 days</button>
+        <button type="button" data-range="30" aria-pressed="true">30 days</button>
+        <button type="button" data-range="all" aria-pressed="false">All</button>
+      </div>
+    </div>
+    <div class="rec-stats" id="recStats"></div>
+    <div class="chart" id="recChart"></div>
+    <div class="ledger-wrap" id="recTableWrap">
+      <table class="ledger rec-table">
+        <thead><tr>
+          <th>Day</th>
+          <th>Hours<small>entered</small></th>
+          <th>Total<small>shipments</small></th>
+          <th>Total<small>% of target</small></th>
+          <th>P1<small>% of target</small></th>
+          <th>P2<small>% of target</small></th>
+          <th>Hours<small>at total target</small></th>
+          <th>Change<small>vs day before</small></th>
+        </tr></thead>
+        <tbody id="recRows"></tbody>
+      </table>
+    </div>
+    <p class="rec-empty" id="recEmpty" hidden>No days recorded in this range yet. Type figures into the hour-by-hour table and the day appears here straight away.</p>
+    <div class="tool-row">
+      <button class="btn" id="csvDays" type="button">Download daily record (CSV)</button>
+      <button class="btn" id="csvHours" type="button">Download every hour (CSV)</button>
+    </div>
+  </section>
+
+  <section class="panel tools" aria-labelledby="toolsTitle">
+    <h2 id="toolsTitle">Share and back up</h2>
+    <p class="backup-state" id="backupState"></p>
+    <div class="tool-row">
+      <button class="btn primary" id="shareBtn" type="button">Copy share link for this day</button>
+      <button class="btn" id="exportBtn" type="button">Download backup</button>
+      <label class="btn file" for="importFile">Restore backup<input id="importFile" type="file" accept="application/json,.json"></label>
+      <button class="btn danger" id="clearDay" type="button">Clear this day</button>
+    </div>
+    <input class="share-out" id="shareOut" type="text" readonly hidden aria-label="Share link">
+    <ol class="how">
+      <li><strong>Each hour:</strong> type P1 and P2 into that hour's row and press Enter. It saves straight away.</li>
+      <li><strong>Every day is recorded</strong> in the day-by-day record as soon as it has a figure. Nothing else to press.</li>
+      <li><strong>To show someone a day,</strong> open it and copy the share link. Whoever opens the link sees the same numbers.</li>
+      <li><strong>Once a week, download a backup.</strong> Figures live in this browser only, so the backup is what lets you restore them on another device or after clearing the browser.</li>
+    </ol>
+    <p class="foot">A blank hour isn't judged against target. Green is at or above target, amber is within 10% under, red is more than 10% under.</p>
+  </section>
+</div>
+<script src="app.js"></script>
+</body>
+</html>
